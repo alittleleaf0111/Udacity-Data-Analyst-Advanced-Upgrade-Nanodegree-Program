@@ -1,0 +1,669 @@
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, echo = FALSE)
+```
+R语言-拍拍贷数据探索性分析
+========================================================
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that you end up using
+# in your analysis in this code chunk.
+
+# Notice that the parameter "echo" was set to FALSE for this code chunk.
+# This prevents the code from displaying in the knitted HTML output.
+# You should set echo=FALSE for all code chunks in your file.
+library(gridExtra)
+library(dplyr)
+library(GGally)
+library(scales)
+library(memisc)
+library(ggplot2)
+```
+# 1.数据说明
+  【数据用途】
+所提供数据为拍拍贷真实业务数据，但仅为信用标的一个样本，仅供数据分析和学术研究目的使用，而非信息披  露。从这个数据中推导得到的结果不反映拍拍贷平台的  整体情况，也不代表拍拍贷官方的态度。
+
+【数据描述】
+所提供数据包含了成交时间从2015年1月1日到2017年1月30日的328553支信用标。
+
+# 2.数据概览
+```{r echo=FALSE, Load_the_Data}
+#加载数据
+lc <- read.csv('LC.csv',fileEncoding = 'utf8')
+#数据集整体结构及字段类型
+str(lc)
+```
+
+### 描述性统计
+
+```{r echo=FALSE}
+#描述性统计
+summary(lc)
+```
+结论：一共有328553个对象，21个变量
+
+# 3.字段说明
+
+1.ListingId：列表序号，为列表的唯一键。
+
+2.借款金额：列表成交总金额。
+
+3.借款期限：总的期数（按月计）。
+
+4.借款利率：年化利率（百分数）。
+
+5.款成功日期：列表成交的日期。都在2015年1月1日以后。
+
+6	.始评级：列表成交时的信用评级。AAA为安全标，AA为赔标，A-F为信用等级。
+
+7.借款类型：分为'应收安全标'，‘电商’，‘APP闪电’，‘普通’和‘其他’。
+
+8.是否首标：该标是否为借款人首标。
+
+9.年龄：借款人在该列表借款成功时的年龄。
+
+10.性别：该列表借款人性别。
+
+11.手机认证：该列表借款人手机实名认证是否成功。
+
+12.户口认证：该列表借款人户口认证是否成功。
+
+13.视频认证：该列表借款人视频认证是否成功。
+
+14.学历认证：该列表借款人学历认证是否成功。成功则表示有大专及以上学历。
+
+15.征信认证：该列表借款人征信认证是否成功。成功则表示有人行征信报告。
+
+16.淘宝认证：该列表借款人淘宝认证是否成功。成功则表示为淘宝店主。
+
+17.历史成功借款次数：借款人在该列表成交之前的借款成功次数。
+
+18.历史成功借款金额：借款人在该列表成交之前的借款成功金额。
+
+19.总待还本金：借款人在该列表成交之前待还本金金额。
+
+20.历史正常还款期数：借款人在该列表成交之前的按期还款期数。
+
+21.历史逾期还款期数：借款人在该列表成交之前的逾期还款期数。
+
+
+# 4.单变量分析
+
+### 4.1.借款金额
+```{r echo=FALSE, Univariate_Plots}
+#借款金额直方图
+summary(lc$借款金额)
+qplot(x=lc$借款金额,data=lc,binwidth =0.025)+
+  scale_x_log10()+
+  scale_y_sqrt()+
+  geom_vline(xintercept = quantile(lc$借款金额,0.95),linetype='dashed',color='red')+
+  geom_vline(xintercept = quantile(lc$借款金额,0.05),linetype='dashed',color='red')
+```
+```{r}
+#求5%分位数
+quantile(lc$借款金额,probs = 0.05)
+```
+
+```{r}
+#求95%分位数
+quantile(lc$借款金额,probs = 0.95)
+```
+
+结论：有一些金额分组有着较高的频次。5%分位数到95%分位数的金额为660~9000，大部分为小额贷款。
+
+### 4.2.借款期限
+```{r echo=FALSE}
+#借款期限柱状图
+summary(lc$借款期限)
+qplot(lc$借款期限,binwidth = 1)+
+  scale_x_continuous(breaks = seq(0,24,1))
+```
+
+```{r}
+#各借款期限数量
+table(lc$借款期限)
+```
+
+结论：借款期限最多的月份是6月和12月。
+
+### 4.3.借款利率
+```{r echo=FALSE}
+#借款利率柱状图
+summary(lc$借款利率)
+qplot(lc$借款利率,binwidth = 1)+
+  scale_x_continuous(breaks = seq(6,24,1))
+```
+
+结论：借款利率最多的为20%和22%
+
+### 4.4.借款日期
+
+```{r echo=FALSE}
+
+#建立年，月，日，年-月字段
+lc$year <- format(as.Date(lc$借款成功日期), "%Y")
+lc$month <- format(as.Date(lc$借款成功日期),"%m")
+lc$day <- format(as.Date(lc$借款成功日期),"%d")
+lc$year_month <- format(as.Date(lc$借款成功日期),"%Y-%m")
+
+#分别作柱状图
+ggplot(aes(lc$year),data = lc)+geom_bar()
+ggplot(aes(lc$month),data = lc)+geom_bar()
+ggplot(aes(lc$day),data = lc)+geom_bar()
+ggplot(aes(lc$year_month),data = lc)+geom_bar()+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+结论：数据集的借款日期是从2015年1月到2017年1月，主要是2016年借款的数据，借款成功数量整体上呈现出随时间而增加的趋势。
+
+### 4.5.初始评级
+
+```{r echo=FALSE}
+#初始评级柱状图
+summary(lc$初始评级)
+ggplot(aes(x=lc$初始评级),data=lc)+geom_bar()
+    
+```
+
+结论：初始评级大多为C和D。
+
+### 4.6.借款类型
+
+```{r echo=FALSE}
+#借款类型柱状图
+summary(lc$借款类型)
+ggplot(aes(x=lc$借款类型),data=lc)+geom_bar()
+    
+```
+
+结论：借款类型主要是APP闪电、普通和其他，电商类型最少。
+
+### 4.7.是否首标
+
+```{r echo=FALSE}
+#是否首标柱状图
+summary(lc$是否首标)
+ggplot(aes(x=lc$是否首标),data=lc)+geom_bar()
+    
+```
+
+结论：非首标的数量占多数，超过首标的两倍。
+
+### 4.8.年龄
+
+```{r echo=FALSE}
+#年龄直方图
+summary(lc$年龄)
+ggplot(aes(x=lc$年龄),data=lc)+geom_bar()+
+    geom_vline(xintercept = quantile(lc$年龄,0.95),linetype='dashed',color='red')+
+    geom_vline(xintercept = quantile(lc$年龄,0.05),linetype='dashed',color='red')
+```
+```{r}
+#5%分位数
+quantile(lc$年龄,probs = 0.05)
+```
+
+```{r}
+#95%分位数
+quantile(lc$年龄,probs = 0.95)
+```
+
+结论：借款人年龄分布呈右偏分布。5%分位数到95%分位数的年龄为21~43岁，大部分为中青年。
+
+### 4.9.性别
+
+```{r echo=FALSE}
+#性别柱状图
+summary(lc$性别)
+ggplot(aes(x=lc$性别),data=lc)+geom_bar()
+```    
+
+结论：借款人多为男性，数量约为女性借款人数的二倍。
+
+### 4.10.认证方式
+
+```{r echo=FALSE}
+#各认证方式柱状图
+A_by_mobile <- ggplot(aes(x=lc$手机认证),data=lc)+geom_bar()
+A_by_household <- ggplot(aes(x=lc$户口认证),data=lc)+geom_bar()
+A_by_video <- ggplot(aes(x=lc$视频认证),data=lc)+geom_bar()
+A_by_degree <- ggplot(aes(x=lc$学历认证),data=lc)+geom_bar()
+A_by_credit <- ggplot(aes(x=lc$征信认证),data=lc)+geom_bar()
+A_by_Taobao <- ggplot(aes(x=lc$淘宝认证),data=lc)+geom_bar()
+
+grid.arrange(A_by_mobile,A_by_household,A_by_video,A_by_degree,A_by_credit,A_by_Taobao)
+```   
+
+结论：大多数是通过手机认证和学历认证成功的。
+
+### 4.11.历史成功借款次数
+
+```{r echo=FALSE}
+#历史成功借款次数柱状图
+summary(lc$历史成功借款次数)
+qplot(x=lc$历史成功借款次数,binwidth = 1)+
+  scale_y_sqrt()+
+  scale_x_continuous(breaks = seq(0,40,1),limits=c(0,40))+
+  geom_vline(xintercept = quantile(lc$历史成功借款次数,0.95),linetype = 'dashed',color='red')
+``` 
+
+结论：95%借款次数在七次以下。
+
+### 4.12.历史逾期还款期数
+
+```{r echo=FALSE}
+#历史逾期还款期数柱状图
+summary(lc$历史逾期还款期数)
+qplot(x=lc$历史逾期还款期数,binwidth = 1)+
+  scale_x_continuous(breaks = seq(1,60,1),limits=c(1,60))+
+  scale_y_sqrt()+
+  geom_vline(xintercept = quantile(lc$历史逾期还款期数,0.95),linetype = 'dashed',color='red')+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+``` 
+
+结论：95%历史逾期还款期数都在2次以下。
+
+## 单变量分析总结
+
+### 数据结构
+
+所分析数据集一共有328553条数据，包含21个变量。
+
+### 作图观察
+
+1.有一些金额分组有着较高的频次。5%分位数到95%分位数的金额为660~9000，大部分为小额贷款。
+
+2.借款期限最多的月份是6月和12月。
+
+3.借款利率最多的为20%和22%
+
+4.数据集的借款日期是从2015年1月到2017年1月，主要是2016年借款的数据，借款成功数量整体上呈现出随时间而增加的趋势。
+
+5.初始评级大多为C和D。
+
+6.借款类型主要是APP闪电、普通和其他，电商类型最少。
+
+7.非首标的数量占多数，超过首标的两倍。
+
+8.借款人年龄分布呈右偏分布。5%分位数到95%分位数的年龄为21~43岁，大部分为中青年。
+
+9.借款人多为男性，数量约为女性借款人数的二倍。
+
+10.大多数是通过手机认证和学历认证成功的。
+
+11.95%借款次数在七次以下。
+
+12.95%历史逾期还款期数都在2次以下。
+
+### 讨论
+
+数据集的所有变量中，更希望了解借款利率这一个变量及其影响因素。因此下面我们试图分析各个变量和借款利率之间的关系。
+
+
+
+# 5.双变量分析
+### 5.0. 借款金额和借款利率的关系
+```{r echo=FALSE}
+#作借款金额和借款利率散点图
+ggplot(aes(x=借款金额,y=借款利率),data=lc)+
+  geom_jitter(alpha = 0.05)+
+  scale_x_log10()+
+  geom_smooth(method = lm)
+cor.test(lc$借款金额,lc$借款利率)
+```
+
+结论：借款利率随着借款金额的增加而减少,但相关性不是很强。
+
+### 5.1. 借款期限和借款利率的关系
+
+```{r echo=FALSE}
+#作不同借款期限下的借款利率箱线图
+lc$借款期限 <- as.factor(lc$借款期限)
+ggplot(aes(x=借款期限,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：借款期限和借款利率没有明显的关系。
+
+### 5.2. 借款月份和借款利率的关系
+
+```{r echo=FALSE}
+#作不同借款月份下的借款利率箱线图
+ggplot(aes(x=month,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：不同月份利率的Q1和Q3基本相同，中位数不同。月份与利率之间五明显关系。
+
+### 5.3. 借款类型和借款利率的关系
+
+```{r echo=FALSE}
+#作不同借款类型下的借款利率箱线图
+ggplot(aes(x=借款类型,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：电商的借款利率和其他借款类型相比较低。
+
+### 5.4. 初始评级和借款利率的关系
+```{r echo=FALSE}
+#作不同初始评级下的借款利率箱线图
+ggplot(aes(x=初始评级,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：初始评级越低，借款利率越高。
+
+### 5.5. 是否首标和借款利率的关系
+```{r echo=FALSE}
+#作是否首标的借款利率箱线图
+ggplot(aes(x=是否首标,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：是否首标和借款利率无明显关系。
+
+### 5.6. 年龄和借款利率的关系
+```{r echo=FALSE}
+#做年龄和借款利率散点图
+ggplot(aes(x=年龄,y=借款利率),data=lc)+
+  geom_jitter(alpha = 0.05)+
+  geom_smooth(method=lm)
+```
+
+结论：年龄和借款利率无明显关系。
+
+### 5.6. 性别和借款利率的关系
+```{r echo=FALSE}
+#作不同性别下的借款利率箱线图
+ggplot(aes(x=性别,y=借款利率),data=lc)+
+  geom_boxplot()
+```
+
+结论：性别和借款利率无明显关系。
+
+### 5.7. 历史成功借款次数和借款利率的关系
+```{r echo=FALSE}
+#作历史成功借款次数和借款利率散点图，并添加线性拟合线
+lc_notfirst <- subset(lc,是否首标 == '否')
+ggplot(aes(x=历史成功借款次数,y=借款利率),data=lc_notfirst)+
+  geom_jitter(alpha = 0.05)+
+  scale_x_continuous()+
+  geom_smooth(method = lm)
+cor.test(lc_notfirst$历史成功借款次数,lc_notfirst$借款利率)
+```
+
+结论：首标时历史成功还款次数为0，各种借款利率都存在。非首标的数据，历史成功借款次数与借款利率呈负相关，历史成功借款次数越高，借款利率越低，但是相关性不是很强。
+
+### 5.8. 历史成功借款金额和借款利率的关系
+```{r echo=FALSE}
+#作历史成功借款金额和借款利率散点图，并添加线性拟合线
+ggplot(aes(x=历史成功借款金额,y=借款利率),data=lc_notfirst)+
+  geom_jitter(alpha=0.05)+
+  scale_x_log10()+
+  geom_smooth(method = lm)
+cor.test(lc_notfirst$历史成功借款金额,lc_notfirst$借款利率)
+```
+
+结论：首标时历史成功借款金额为0，各种借款利率都存在。非首标的数据，历史成功借款金额与借款利率呈负相关，历史成功借款金额越高，借款利率越低，但是相关性不是很强。
+
+### 5.9. 历史正常还款期数和借款利率的关系
+```{r echo=FALSE}
+#作历史正常还款期数和借款利率散点图，并添加线性拟合线
+ggplot(aes(x=历史正常还款期数,y=借款利率),data=lc_notfirst)+
+  geom_jitter(alpha=0.05)+
+  scale_x_log10()+
+  geom_smooth(method = lm)
+cor.test(lc_notfirst$历史正常还款期数,lc_notfirst$借款利率)
+```
+
+结论：首标时历史正常还款期数大多是0，各种借款利率都存在。非首标的数据，历史正常还款期数与借款利率呈负相关，历史正常还款期数越高，借款利率越低，但是相关性不是很强。
+
+### 5.9. 历史逾期还款期数和借款利率的关系
+```{r echo=FALSE}
+#作历史逾期还款期数和借款利率散点图，并添加线性拟合线
+ggplot(aes(x=历史逾期还款期数,y=借款利率),data=lc_notfirst)+
+  geom_jitter(alpha=0.05)+
+  scale_x_log10()+
+  geom_smooth(method = lm)
+cor.test(lc_notfirst$历史逾期还款期数,lc_notfirst$借款利率)
+```
+
+结论：首标时历史逾期还款期数都是是0，各种借款利率都存在。非首标的数据，历史成功逾期期数与借款利率没有明显的关系。
+
+## 双变量分析总结
+
+### 图形观察结论
+
+1.借款利率随着借款金额的增加而减少,但相关性不是很强。
+
+2.电商的借款利率和其他借款类型相比较低。
+
+3.初始评级越低，借款利率越高。
+
+4.首标时历史成功还款次数为0，各种借款利率都存在。非首标的数据，历史成功借款次数与借款利率呈负相关，历史成功借款次数越高，借款利率越低，但是相关性不是很强
+
+5.首标时历史成功借款金额为0，各种借款利率都存在。非首标的数据，历史成功借款金额与借款利率呈负相关，历史成功借款金额越高，借款利率越低，但是相关性不是很强。
+
+6.首标时历史正常还款期数大多是0，各种借款利率都存在。非首标的数据，历史正常还款期数与借款利率呈负相关，历史正常还款期数越高，借款利率越低，但是相关性不是很强。
+
+
+### 总结
+
+我们可以知道借款利率与借款金额，借款类型和初级评级有关，而其中的非首标数据，借款利率还与历史成功借款次数，历史成功借款金额和历史正常还款期数有关。
+
+
+# 6.多变量分析
+### 6.0. 借款金额和借款利率与借款类型的关系
+```{r echo=FALSE}
+#借款金额和借款利率散点图并按借款类型着色
+ggplot(aes(x=借款金额,y=借款利率,color = 借款类型),data = lc)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+```
+
+结论：APP闪电的借款金额较少，但借款利率较高；电商的借款金额较多，借款利率较低；普通的借款金额处于中等水平，借款利率也较高，但小于APP闪电的借款利率；其他类型借款金额和借款利率分布比较广泛。
+
+### 6.1. 借款金额和借款利率与初始评级的关系
+```{r echo=FALSE}
+#借款金额和借款利率散点图并按初始评级着色
+ggplot(aes(x=借款金额,y=借款利率,color = 初始评级),data = lc)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()+
+  scale_color_brewer(type='seq',direction = -1)+
+  theme_dark()
+```
+
+结论：初始评级越高，借款利率越低。贷款金额越高，借款利率越低。
+
+### 6.3. 非首标历史成功借款次数和借款利率与借款类型的关系
+```{r echo=FALSE}
+#非首标数据历史成功借款次数和借款利率散点图并按借款类型着色
+ggplot(aes(x=历史成功借款次数,y=借款利率,color = 借款类型),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+```
+
+结论：电商的成功借款次数较低，借款利率也偏低；普通的借款利率较高；APP闪电和其他历史成功借款次数较高。
+
+### 6.4. 非首标历史成功借款次数和借款利率与初始评级的关系
+```{r echo=FALSE}
+#非首标历史成功借款次数和借款利率散点图并按初始评级着色
+ggplot(aes(x=历史成功借款次数,y=借款利率,color = 初始评级),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+
+```
+
+结论：初始评级与历史成功借款次数无明显关系；初始评级越高，借款利率越低。
+
+### 6.5. 非首标历史成功借款金额和借款利率与借款类型的关系
+```{r echo=FALSE}
+#非首标历史成功借款金额和借款利率散点图并按借款类型着色
+ggplot(aes(x=历史成功借款金额,y=借款利率,color = 借款类型),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+
+```
+
+结论：App闪电历史成功借款金额较少，借款利率也较高；电商历史成功借款金额较多，利率也较低；普通与其他历史成功借款金额介于APP闪电和电商之间，利率分布比较广泛。
+
+### 6.6. 非首标历史成功借款金额和借款利率与初始评级的关系
+```{r echo=FALSE}
+#非首标历史成功借款金额和借款利率散点图并按初始评级着色
+ggplot(aes(x=历史成功借款金额,y=借款利率,color = 初始评级),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+
+```
+
+结论：初始评级与历史成功借款金额无明显关系；初始评级越高，借款利率越低。
+
+### 6.7. 非首标历史正常还款期数和借款利率与借款类型的关系
+```{r echo=FALSE}
+#非首标历史正常还款期数和借款利率散点图并按借款类型着色
+ggplot(aes(x=历史正常还款期数,y=借款利率,color = 借款类型),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+
+```
+
+结论：历史正常还款期数与借款类型无明显关系；电商借款利率较低。
+
+### 6.8. 非首标历史正常还款期数和借款利率与初始评级的关系
+```{r echo=FALSE}
+#非首标历史正常还款期数和借款利率散点图并按初始评级着色
+ggplot(aes(x=历史正常还款期数,y=借款利率,color = 初始评级),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+
+```
+
+结论：历史正常还款期数与初始评级无明显关系；初始评级越高，利率越低。
+
+### 6.9. 历史成功借款金额和借款金额与借款类型的关系
+```{r echo=FALSE}
+##历史成功借款金额和借款金额散点图并按借款类型着色
+ggplot(aes(x=历史成功借款金额,y=借款金额,color = 借款类型),data = lc_notfirst)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()
+```
+
+结论：历史成功借款金额越多，则借款金额也越多。不同借款类型的历史成功借款金额和借款金额由高到底分别是电商，普通，其他，APP闪电。
+
+## 创建线性模型
+### 1.首标模型
+```{r echo=FALSE}
+#首标模型：借款利率与初始评级，借款金额，借款类型
+lc_first <- subset(lc,是否首标 == '是')
+m1 <- lm(I(借款利率)~I(初始评级),data=lc_first)
+m2 <- update(m1,~ . + 借款金额)
+m3 <- update(m2,~ . + 借款类型)
+mtable(m1,m2,m3)
+
+```
+
+结论：首标的借款利率与初始评级，借款金额，借款类型关系最密切。
+
+### 1.非首标模型
+```{r echo=FALSE}
+#非首标模型：借款利率与初始评级，借款金额，借款类型，历史成功借款次数，历史成功借款金额，历史正常还款期数
+m1 <- lm(I(借款利率)~I(初始评级),data=lc_notfirst)
+m2 <- update(m1,~ . + 借款金额)
+m3 <- update(m2,~ . + 借款类型)
+m4 <- update(m2,~ . + 历史成功借款次数)
+m5 <- update(m2,~ . + 历史成功借款金额)
+m6 <- update(m2,~ . + 历史正常还款期数)
+mtable(m1,m2,m3,m4,m5,m6)
+
+```
+
+结论：非首标的借款利率与初始评级，借款金额，借款类型关系最密切。
+
+### 3.所有数据模型
+```{r echo=FALSE}
+#所有数据模型：借款利率与初始评级，借款金额，借款类型
+m1 <- lm(I(借款利率)~I(初始评级),data=lc)
+m2 <- update(m1,~ . + 借款金额)
+m3 <- update(m2,~ . + 借款类型)
+mtable(m1,m2,m3)
+```
+
+结论：所有信用标数据借款利率与初始评级，借款金额，借款类型关系最密切。
+
+
+## 多变量分析总结
+
+### 图形观察结论
+
+1.APP闪电的借款金额较少，但借款利率较高；电商的借款金额较多，借款利率较低；普通的借款金额处于中等水平，借款利率也较高，但小于APP闪电的借款利率；其他类型借款金额和借款利率分布比较广泛。
+
+2.初始评级越高，借款利率越低。贷款金额越高，借款利率越低。
+
+3.电商的成功借款次数较低，借款利率也偏低；普通的借款利率较高；APP闪电和其他历史成功借款次数较高。
+
+4.App闪电历史成功借款金额较少，借款利率也较高；电商历史成功借款金额较多，利率也较低；普通与其他历史成功借款金额介于APP闪电和电商之间，利率分布比较广泛。
+
+5.历史成功借款金额越多，则借款金额也越多。不同借款类型的历史成功借款金额和借款金额由高到底分别是电商，普通，其他，APP闪电。
+
+
+### 总结
+通过图形和创建的线性模型可知：借款利率与初始评级，借款金额，借款类型关系最密切。初始评级越高、借款金额越多，则借款利率越低。APP闪电的借款利率最高，电商的借款利率最低，其他类型和普通的借款利率分布较广泛。
+
+
+
+# 最终图和总结
+
+Plot One
+
+```{r echo=FALSE, Plot_One}
+qplot(lc$借款利率,binwidth = 1)+
+  scale_x_continuous(breaks = seq(6,24,1))+
+  labs(x = '借款利率 (%)',
+       y = '频数(N)',
+       title = '借款利率直方图')
+```
+
+结论：借款利率最多的是20%和22%。
+
+
+Plot Two
+
+```{r echo=FALSE, Plot_Two}
+ggplot(aes(x=初始评级,y=借款利率),data=lc)+
+  geom_boxplot()+
+  labs(x = '初始评级',
+       y = '借款利率(%)',
+       title = '初始评级与借款利率')
+```
+
+结论：初始评级越高，借款利率越低。
+
+Plot Three
+
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x=借款金额,y=借款利率,color = 借款类型),data = lc)+
+  geom_point(alpha=0.5,size =1,position = 'jitter')+
+  scale_x_log10()+
+    labs(x = '借款金额($)',
+       y = '借款利率(%)',
+       title = '借款金额与借款利率和借款类型')
+```
+
+
+结论：APP闪电的借款金额较少，但借款利率较高；电商的借款金额较多，借款利率较低；普通的借款金额处于中等水平，借款利率也较高，但小于APP闪电的借款利率；其他类型借款金额和借款利率分布比较广泛。
+
+
+# 总结与反思
+
+### 总结：
+
+####借款利率集中在18%~24%，其中利率为20%和22%的信用标数量最多。借款利率与初始评级，借款金额，借款类型关系最密切。初始评级越高、借款金额越多，则借款利率越低。APP闪电的借款利率最高，电商的借款利率最低，其他类型和普通的借款利率分布较广泛。
+
+### 反思：
+
+#### 1.尽可能将所有变量与借款利率的关系都讨论了。因为有些变量是非首标才存在的，为了讨论非首标数据特有的变量对借款利率的影响，通过首标与非首标的数据分别建立了模型。
+
+#### 2.想知道认证方式与借款利率的关系，但是认证方式是用不同字段分开表示的，而且一种用户也不止一种认证方式。后期可以对数据进行整理后分析认证方式及其组合对借款利率的影响。
+
+#### 3.借款期限最多的月份是6个月和12个月，6个月的借款利率相比于12个月的较低，后期应该再讨论借款期限对借款利率的影响。
