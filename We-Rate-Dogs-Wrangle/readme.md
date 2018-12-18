@@ -15,9 +15,9 @@
 
 ### 文件说明
 *
-    act_report.pdf ：数据观察分析报告
+    WeRateDogs_Wrangle_Report.pdf.pdf ：数据观察分析报告
 *
-    wrangle_report.pdf：数据整理文档
+    WeRateDogs_Wrangle.pdf：数据整理文档
 *
     twitter-archive-enhanced.csv：WeRateDogs 的Twitter档案
 *
@@ -27,6 +27,6 @@
 *    
     twitter_archive_master.csv：合并与清理后的数据
 *    
-    wrangle_act.ipynb：jupyter数据整理报告
+    WeRateDogs_Wrangle.ipynb：jupyter数据整理报告
 *
-    wrangle_act.html：html格式报告
+    WeRateDogs_Wrangle.html：html格式报告
